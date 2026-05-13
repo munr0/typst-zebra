@@ -1,3 +1,5 @@
+set windows-shell := ["pwsh", "-NoLogo", "-Command"]
+
 svgo-config := '''
 export default {
   plugins: [
@@ -11,6 +13,7 @@ export default {
 
 default: fmt build test
 
+[unix]
 build:
     cd plugin && RUSTFLAGS="-Zunstable-options -Cpanic=immediate-abort" cargo +nightly -Zbuild-std=std build --release --target wasm32-unknown-unknown
     wasm-opt --enable-bulk-memory-opt -Oz -o src/zebra.wasm plugin/target/wasm32-unknown-unknown/release/typst_zebra.wasm
@@ -21,6 +24,18 @@ build:
     @echo '{{svgo-config}}' > svgo.config.js
     svgo examples/readme-*.svg
     @rm svgo.config.js
+
+[windows]
+build:
+    cd plugin; $env:RUSTFLAGS = "-Zunstable-options -Cpanic=immediate-abort"; cargo +nightly -Zbuild-std=std build --release --target wasm32-unknown-unknown
+    wasm-opt --enable-bulk-memory-opt --enable-nontrapping-float-to-int -Oz -o src/zebra.wasm plugin/target/wasm32-unknown-unknown/release/typst_zebra.wasm
+
+    typst compile --root . examples/readme-header.typ -f svg
+    typst compile --root . examples/readme-optimized-path.typ -f svg
+    @Get-ChildItem examples/readme-*.svg | ForEach-Object { (Get-Content $_ -Raw) -replace '(\d)pt"', '$1"' | Set-Content $_ }
+    @'{{ svgo-config }}' | Set-Content svgo.config.js
+    @Get-ChildItem examples/readme-*.svg | ForEach-Object { svgo $_.FullName }
+    @Remove-Item svgo.config.js
 
 fmt:
     cd plugin && cargo fmt
