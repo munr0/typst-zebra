@@ -1,11 +1,12 @@
 #let _plugin = plugin("zebra.wasm")
 
-#let encode(data, barcode, options, quiet-zone: 0) = {
+#let encode(data, barcode, options, quiet-zone: 0, graphic-size-arg: bytes(())) = {
   let bytes = _plugin.encode(
     bytes(data),
     bytes(if type(data) == str { "str" } else { "bytes" }),
     bytes(barcode),
     cbor.encode(options),
+    graphic-size-arg,
   )
   let i16(index) = {
     let n = bytes.at(index + 1) * 256 + bytes.at(index)
@@ -13,13 +14,14 @@
   }
   let width = i16(0)
   let height = i16(2)
+  let clear-size = i16(4)
   let segments = ()
   if quiet-zone > 0 {
     width += quiet-zone * 2
     height += quiet-zone * 2
     segments.push(curve.move((quiet-zone * 1pt, quiet-zone * 1pt), relative: true))
   }
-  let index = 4
+  let index = 6
   // typst limitation: loop seems to be infinite
   while index < bytes.len() {
     let op = bytes.at(index)
@@ -39,7 +41,7 @@
       panic()
     }
   }
-  (width: width, height: height, segments: segments)
+  (width: width, height: height, segments: segments, clear-size: clear-size)
 }
 
 #let _generic(
@@ -53,6 +55,8 @@
   fill: black,
   background-fill: none,
   default-quiet-zone: 1,
+  graphic: none,
+  graphic-size: auto,
 ) = context {
   let options = options
   for (key, value) in options.pairs() {
@@ -68,11 +72,22 @@
   } else {
     quiet-zone
   }
+
+  let graphic-size-arg = if graphic == none {
+    bytes(())
+  } else if graphic-size == auto {
+    cbor.encode(none)
+  } else {
+    let gs = if type(graphic-size) == ratio { graphic-size / 100% } else { graphic-size }
+    cbor.encode(gs)
+  }
+
   let path = encode(
     data,
     barcode,
     options,
     quiet-zone: quiet-zone,
+    graphic-size-arg: graphic-size-arg,
   )
 
   let sizes = (width, height, module-size).map(x => if x != auto { x.to-absolute() } else { x })
@@ -102,5 +117,14 @@
         ..path.segments,
       )
     })
+    if graphic != none and path.clear-size > 0 {
+      place(
+        center + horizon,
+        box(width: path.clear-size * module-size, height: path.clear-size * module-size, {
+          set image(width: 100%, height: 100%)
+          graphic
+        }),
+      )
+    }
   })
 }

@@ -38,6 +38,8 @@
 /// - module-size (auto, length):
 /// - fill (color, gradient):
 /// - background-fill (none, color, gradient):
+/// - graphic (none, content):
+/// - graphic-size (auto, ratio):
 /// -> content
 #let qrcode(
   data,
@@ -48,15 +50,26 @@
   module-size: auto,
   fill: black,
   background-fill: none,
-) = _generic(
-  data,
-  "qrcode",
-  options: options,
-  quiet-zone: quiet-zone,
-  width: width,
-  height: height,
-  module-size: module-size,
-  fill: fill,
-  background-fill: background-fill,
-  default-quiet-zone: 4,
-)
+  graphic: none,
+  graphic-size: auto,
+) = {
+  let options = if graphic != none and "ec-level" not in options {
+    options + (ec-level: "h")
+  } else {
+    options
+  }
+  _generic(
+    data,
+    "qrcode",
+    options: options,
+    quiet-zone: quiet-zone,
+    width: width,
+    height: height,
+    module-size: module-size,
+    fill: fill,
+    background-fill: background-fill,
+    default-quiet-zone: 4,
+    graphic: graphic,
+    graphic-size: graphic-size,
+  )
+}

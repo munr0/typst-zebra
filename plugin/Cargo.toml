@@ -1,6 +1,6 @@
 [package]
 name = "typst-zebra"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 
 [lib]
@@ -12,6 +12,7 @@ datamatrix = "0.3"
 qrcode = { version = "0.14", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 wasm-minimal-protocol = "0.1"
+
 
 [profile.release]
 lto = true

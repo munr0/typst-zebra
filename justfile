@@ -46,6 +46,9 @@ test:
     typst compile --root . examples/tests.typ -f svg
     typst compile --root . examples/test-readme.typ -f svg
 
+compute:
+    cd tools/compute-clear && cargo build --release
+
 alias w := watch
 watch typst-file="tests":
     typst watch --root . '{{ if typst-file =~ "\\.typ$" { typst-file } else { "examples/" + typst-file + ".typ" } }}' -f svg

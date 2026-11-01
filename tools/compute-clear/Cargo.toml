@@ -1,0 +1,13 @@
+[package]
+name = "qr-calibrate"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# MUST stay in sync with plugin/Cargo.toml
+qrcode = { version = "0.14", default-features = false }
+rxing = "0.7"
+rqrr = "0.5"
+rayon = "1"
+indicatif = { version = "0.17", features = ["rayon"] }
+image = "0.24"

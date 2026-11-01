@@ -15,20 +15,31 @@ pub fn encode(
     data_type: &[u8],
     barcode: &[u8],
     options: &[u8],
+    graphic_size: &[u8],
 ) -> Result<Vec<u8>, String> {
     let is_utf8 = match data_type {
         b"bytes" => false,
         b"str" => !data.is_ascii(),
         _ => return Err("invalid data_type".to_string()),
     };
-    let bitmap = match barcode {
+    let (bitmap, clear_size) = match barcode {
         // aztec
-        b"datamatrix" => cbor_read::<datamatrix::Options>(options)?.encode(data, is_utf8),
+        b"datamatrix" => {
+            let b = cbor_read::<datamatrix::Options>(options)?.encode(data, is_utf8)?;
+            (b, 0u16)
+        }
         // pdf417
-        b"qrcode" => cbor_read::<qrcode::Options>(options)?.encode(data, is_utf8),
+        b"qrcode" => {
+            let gs: Option<Option<f64>> = if graphic_size.is_empty() {
+                None
+            } else {
+                Some(cbor_read::<Option<f64>>(graphic_size)?)
+            };
+            cbor_read::<qrcode::Options>(options)?.encode(data, is_utf8, gs)?
+        }
         _ => return Err("invalid barcode".to_string()),
-    }?;
-    Ok(bitmap_to_path(&bitmap))
+    };
+    Ok(bitmap_to_path(&bitmap, clear_size))
 }
 
 fn cbor_read<T: DeserializeOwned>(options: &[u8]) -> Result<T, String> {
@@ -38,10 +49,11 @@ fn cbor_read<T: DeserializeOwned>(options: &[u8]) -> Result<T, String> {
     })
 }
 
-fn bitmap_to_path(bitmap: &Bitmap) -> Vec<u8> {
+fn bitmap_to_path(bitmap: &Bitmap, clear_size: u16) -> Vec<u8> {
     let mut bytes = Vec::new();
     bytes.push_i16(bitmap.width().try_into().unwrap());
     bytes.push_i16(bitmap.height().try_into().unwrap());
+    bytes.push_i16(clear_size as i16);
     for part in bitmap.path() {
         match part {
             PathSegment::Move(dx, dy) => {
@@ -82,23 +94,36 @@ impl From<Error> for String {
     }
 }
 
+// Stub out the WASM host imports so `cargo test` links on native targets.
+#[cfg(test)]
+mod wasm_stubs {
+    #[unsafe(no_mangle)]
+    pub unsafe extern "C" fn wasm_minimal_protocol_write_args_to_buffer(_ptr: *mut u8) {}
+    #[unsafe(no_mangle)]
+    pub unsafe extern "C" fn wasm_minimal_protocol_send_result_to_host(
+        _ptr: *const u8,
+        _len: usize,
+    ) {
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_encode() {
-        assert!(encode(b"0", b"str", b"datamatrix", &[0xA0]).is_ok());
+        assert!(encode(b"0", b"str", b"datamatrix", &[0xA0], &[]).is_ok());
     }
 
     #[test]
     fn test_errors() {
         assert_eq!(
-            encode(b"0", b"unknown", b"", b"").unwrap_err(),
+            encode(b"0", b"unknown", b"", b"", &[]).unwrap_err(),
             "invalid data_type"
         );
         assert_eq!(
-            encode(b"0", b"str", b"unknown", b"").unwrap_err(),
+            encode(b"0", b"str", b"unknown", b"", &[]).unwrap_err(),
             "invalid barcode"
         );
     }

@@ -13,6 +13,12 @@ pub struct Options {
     ec_level: EcLevel,
 }
 
+include!(concat!(env!("OUT_DIR"), "/safe_clear.rs"));
+
+fn find_safe_clear_size(version: u8) -> u8 {
+    SAFE_SIZES[version as usize - 1]
+}
+
 #[derive(Debug, Default, Deserialize, Clone, Copy)]
 #[serde(rename_all = "kebab-case")]
 enum Version {
@@ -51,7 +57,12 @@ impl From<EcLevel> for qrcode::EcLevel {
 }
 
 impl Options {
-    pub fn encode(&self, data: &[u8], is_utf8: bool) -> Result<Bitmap, Error> {
+    pub fn encode(
+        &self,
+        data: &[u8],
+        is_utf8: bool,
+        graphic_size: Option<Option<f64>>,
+    ) -> Result<(Bitmap, u16), Error> {
         let valid_characters = match self.mode {
             None | Some(Mode::Byte) => true,
             Some(Mode::Numeric) => data.iter().all(u8::is_ascii_digit),
@@ -101,10 +112,40 @@ impl Options {
         }
         let qrcode = qrcode?;
 
-        Ok(Bitmap::new(
-            qrcode.to_colors().iter().map(|c| *c != Color::Light),
-            qrcode.width(),
-        ))
+        let width = qrcode.width();
+        let mut pixels = qrcode.to_colors();
+
+        let clear_size: u16 = 'clear: {
+            let Some(size_opt) = graphic_size else {
+                break 'clear 0;
+            };
+            let qrcode::Version::Normal(v) = qrcode.version() else {
+                break 'clear 0;
+            };
+            let s_len = match size_opt {
+                Some(r) => {
+                    let ratio = r.max(0.0).min(1.0);
+                    ((ratio * width as f64).floor() as u8 - 1) | 1 // odd floor
+                }
+                None => find_safe_clear_size(v as u8),
+            };
+
+            if s_len > 0 {
+                let side = s_len as usize;
+                let offset = (width - side) / 2;
+                // Clear centered square
+                for y in offset..(offset + side) {
+                    for x in offset..(offset + side) {
+                        pixels[y * width + x] = Color::Light;
+                    }
+                }
+            }
+
+            s_len as u16
+        };
+
+        let bitmap = Bitmap::new(pixels.into_iter().map(|c| c != Color::Light), width);
+        Ok((bitmap, clear_size))
     }
 }
 
@@ -122,6 +163,14 @@ mod tests {
 
     #[test]
     fn test_encode_0() {
-        assert!(Options::default().encode(b"0", false).is_ok());
+        assert!(Options::default().encode(b"0", false, None).is_ok());
+    }
+
+    #[test]
+    fn test_graphic_auto() {
+        let (_, clear_size) = Options::default()
+            .encode(b"https://example.com", false, Some(None))
+            .unwrap();
+        assert!(clear_size > 0 && clear_size % 2 == 1);
     }
 }
