@@ -129,6 +129,18 @@
     .flatten(),
 )
 
+#case(
+  name: "clear: centred | centred | corner | '+' rects",
+  datamatrix("0", clear: (width: 4, height: 4)),
+  qrcode("0", options: (ec-level: "h"), clear: (width: 5, height: 5)),
+  qrcode("0", quiet-zone: true, clear: (width: 99, height: 99, x: 15, y: 15)),
+  qrcode("0", options: (ec-level: "h"), clear: (
+    (width: 1, height: 21),
+    (width: 21, height: 1),
+    (width: 3, height: 3),
+  )),
+)
+
 = datamatrix
 
 #case(

@@ -1,11 +1,13 @@
 #let _plugin = plugin("zebra.wasm")
 
-#let encode(data, barcode, options, quiet-zone: 0) = {
+#let encode(data, barcode, options, quiet-zone: 0, clear: ()) = {
+  let clear = if type(clear) == dictionary { (clear,) } else { clear }
   let bytes = _plugin.encode(
     bytes(data),
     bytes(if type(data) == str { "str" } else { "bytes" }),
     bytes(barcode),
     cbor.encode(options),
+    cbor.encode(clear),
   )
   let i16(index) = {
     let n = bytes.at(index + 1) * 256 + bytes.at(index)
@@ -52,6 +54,7 @@
   module-size: auto,
   fill: black,
   background-fill: none,
+  clear: (),
   default-quiet-zone: 1,
 ) = context {
   let options = options
@@ -73,6 +76,7 @@
     barcode,
     options,
     quiet-zone: quiet-zone,
+    clear: clear,
   )
 
   let sizes = (width, height, module-size).map(x => if x != auto { x.to-absolute() } else { x })

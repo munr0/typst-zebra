@@ -38,6 +38,11 @@ Both `datamatrix` and `qrcode` share the same arguments.
 
 - `fill`: `color` | `gradient` (default: `black`)
 - `background-fill`: `none` | `color` | `gradient` (default: `none`)
+- `clear`: `dictionary` | `array` (default: `()`)
+
+  Rectangles of modules to leave light, as `(width: int, height: int, x: int, y: int)` from the top left, excluding the quiet zone.  
+  Omit `x` or `y` to centre on that axis, rounding towards the top left.  
+  For placing content over the code.
 
 Examples:
 ```typ

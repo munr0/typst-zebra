@@ -8,6 +8,7 @@
 /// - module-size (auto, length):
 /// - fill (color, gradient):
 /// - background-fill (none, color, gradient):
+/// - clear (dictionary, array):
 /// -> content
 #let datamatrix(
   data,
@@ -18,6 +19,7 @@
   module-size: auto,
   fill: black,
   background-fill: none,
+  clear: (),
 ) = _generic(
   data,
   "datamatrix",
@@ -28,6 +30,7 @@
   module-size: module-size,
   fill: fill,
   background-fill: background-fill,
+  clear: clear,
 )
 
 /// - data (str, bytes):
@@ -38,6 +41,7 @@
 /// - module-size (auto, length):
 /// - fill (color, gradient):
 /// - background-fill (none, color, gradient):
+/// - clear (dictionary, array):
 /// -> content
 #let qrcode(
   data,
@@ -48,6 +52,7 @@
   module-size: auto,
   fill: black,
   background-fill: none,
+  clear: (),
 ) = _generic(
   data,
   "qrcode",
@@ -58,5 +63,6 @@
   module-size: module-size,
   fill: fill,
   background-fill: background-fill,
+  clear: clear,
   default-quiet-zone: 4,
 )
